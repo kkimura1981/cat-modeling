@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>生成AIで3D猫を作ろう！</title>
+<style>
+:root{font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN",Meiryo,sans-serif;color:#182b26;background:#f3f7f5}*{box-sizing:border-box}body{margin:0}main{max-width:900px;margin:auto;padding:25px 16px 50px}h1{font-size:clamp(1.5rem,4vw,2.2rem);margin:0 0 8px}p{line-height:1.6}.intro{color:#456057}.panel{background:white;border:1px solid #cfddd5;border-radius:16px;padding:20px;margin-top:18px;box-shadow:0 2px 12px #183c3010}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}@media(max-width:600px){.grid{grid-template-columns:1fr}}.field{border:2px solid #d6e1da;border-radius:12px;padding:12px;background:#fff}.field.random{background:#edf8ed;border-color:#3e9453}.field.manual{background:#e6f5fb;border-color:#328bb7}.top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}.field-title{font-weight:700}.state{font-size:.76rem;color:#376078}.field.random .state{color:#277640}.field.manual .state{color:#24698b}select,input,textarea{font:inherit;border:1px solid #b6cac0;border-radius:8px;background:#fff;padding:10px;width:100%;min-width:0}button{font:inherit;border:0;border-radius:9px;padding:10px 14px;cursor:pointer;font-weight:700;background:#006b4f;color:white}button:hover{filter:brightness(.93)}button:disabled{opacity:.45;cursor:not-allowed;filter:none}button.secondary{background:#fff;color:#33443c;border:1px solid #b6cac0}button.generateBtn{background:#246d9a;color:#fff}button.archiveBtn{background:#e6e8eb;color:#28313a;border:1px solid #bdc3ca}button.copyBtn{background:#e6e8eb;color:#28313a;border:1px solid #bdc3ca}[hidden]{display:none!important}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.field .controls{flex-wrap:nowrap;gap:6px}.field .controls select,.field .controls input{flex:1 1 0;min-width:0;width:0!important}.field .controls button{flex:0 0 auto;padding:8px 9px;font-size:.78rem}.randomBtn{font-size:.87rem;padding:8px 11px;white-space:nowrap;background:#278247}.full{width:100%;padding:14px;margin-top:14px}.help{font-size:.86rem;color:#4d665c}.output{width:100%;min-height:145px;resize:vertical;line-height:1.5}footer{color:#60736a;font-size:.83rem;margin-top:22px}.notice{border-left:4px solid #91a79b;padding-left:12px}.comboWarning{margin-top:12px;padding:10px 12px;border:1px solid #e3c36a;background:#fff7df;color:#6d5314;border-radius:10px}
+</style>
+</head><body><main>
+<h1>生成AIで3D猫を作ろう！</h1>
+<p class="intro">猫の特徴を自由に選んで、3Dモデル用の英語プロンプトを作ろう。</p>
+<section class="panel">
+<h2>① 猫の特徴を選ぼう</h2>
+<p class="help">各項目は自分で選択するか「おまかせ」で抽選もできます。水色は確定した項目、薄緑色は「残りをおまかせ」の対象となる項目です。気に入った結果は「確定する」を押してください。</p>
+<div id="fields" class="grid"></div>
+<div id="comboWarning" class="comboWarning" hidden></div>
+<div class="row" style="margin-top:14px"><button id="remainingRandom" style="flex:1">残りをおまかせ</button><button id="allRandom" style="flex:1">全部おまかせ</button></div>
+<div class="row" style="margin-top:12px"><button id="clear" class="secondary">すべて未選択に戻す</button></div>
+</section>
+<section class="panel"><h2>② 英語プロンプトを作ろう</h2>
+<p class="help">まずは、「プロンプトを生成」ボタンを押してください。<br>その後、自分で編集できます。<br>問題なければ教員に「OK」と伝えてください。</p>
+<div class="row"><button id="generate" class="generateBtn">プロンプトを生成</button><button id="copy" class="copyBtn">コピー</button></div>
+<textarea id="prompt" class="output" aria-label="生成した英語プロンプト" placeholder="ここに英語プロンプトが表示されます" style="margin-top:12px"></textarea><p id="copyMsg" class="help" aria-live="polite"></p>
+</section>
+<section class="panel" id="teacherPanel">
+<details><summary style="font-size:1.18rem;font-weight:700;cursor:pointer">③ 教員用：記録・次の猫</summary>
+<p class="help">参加者が「OK」と伝えた後、教員が「現在の猫を保存」を押してください。保存後に「新しい猫を作る」で次の猫IDに切り替えます。</p>
+<p class="help">現在の猫ID：<strong id="catId"></strong>　／　保存済み：<strong id="savedCount">0</strong>匹</p>
+<div class="row"><button id="saveCat" class="archiveBtn" type="button">現在の猫を保存</button><button id="newCat" class="generateBtn" type="button" disabled>新しい猫を作る</button></div>
+<div class="row" style="margin-top:10px"><button id="exportFinal" class="archiveBtn" type="button">完成データCSV</button><button id="exportHistory" class="archiveBtn" type="button">操作履歴CSV</button></div>
+<p class="help" id="saveMsg" aria-live="polite"></p>
+<p class="help">記録はこの端末のブラウザ内に保存されます。クラウドには送信されません。終了時に<strong>2種類のCSVを両方保存</strong>してください。ブラウザデータの消去等で記録が失われる場合があります。</p>
+</details></section>
+<footer><p class="notice">教員がMeshyというソフトを使用し、3D生成を行います。興味がある方には、生成の流れも説明します。</p></footer>
+</main><script>
+const definitions=[
+ {key:'fur',label:'毛の長さ',options:[['短毛','short fur'],['中毛','medium-length fur'],['長毛','long fur']]},
+ {key:'body',label:'体型',options:[['小柄','small body'],['普通','average build'],['ぽっちゃり','chubby body'],['スリム','slender body'],['筋肉質','muscular build']]},
+ {key:'ears',label:'耳',options:[['普通','upright ears'],['折れ耳','folded ears'],['大きい耳','large ears'],['小さい耳','small ears']]},
+ {key:'tail',label:'尻尾',options:[['長い','long tail'],['短い','short tail'],['ふさふさ','fluffy tail'],['かぎ尻尾','kinked tail'],['しっぽなし','tailless'],['ポンポンしっぽ','small, round, fluffy pom-pom tail']]},
+ {key:'coat',label:'色・模様',options:[['白','white coat'],['黒','black coat'],['グレー','gray coat'],['茶トラ','orange tabby coat'],['キジトラ','brown tabby coat'],['サバトラ','silver tabby coat'],['三毛','calico coat'],['サビ','tortoiseshell coat'],['ハチワレ','tuxedo-like black and white coat'],['白黒','black and white coat'],['クリーム','cream-colored coat'],['ポイントカラー','point-colored coat']]},
+ {key:'eyes',label:'目',options:[['青','blue eyes'],['緑','green eyes'],['黄色','yellow eyes'],['琥珀色','amber eyes'],['オッドアイ','heterochromia, eyes of different colors'],['銅色','copper-colored eyes']]},
+ {key:'expression',label:'表情',options:[['普通','calm expression'],['眠そう','sleepy expression'],['うれしそう','cheerful expression'],['怒っている','grumpy expression'],['驚いている','surprised expression'],['威嚇している','hissing, threatening expression'],['目を細めている','squinting expression']]},
+ {key:'pose',label:'ポーズ',options:[['座る','sitting pose'],['立つ','standing pose'],['寝そべる','lying-down pose'],['丸くなる','curled-up pose'],['伸びをする','stretching pose'],['歩く','walking pose'],['前足を上げる','raising one front paw'],['伏せる','crouching pose']]},
+ {key:'accessory',label:'アクセサリー',options:[['なし','no accessories'],['首輪','wearing a collar'],['鈴付き首輪','wearing a collar with a bell'],['リボン','wearing a ribbon'],['バンダナ','wearing a bandana'],['蝶ネクタイ','wearing a bow tie'],['帽子','wearing a hat'],['スカーフ','wearing a scarf']]},
+ {key:'name',label:'猫の名前',options:[]}
+];
+const names=['タマ','ミケ','モモ','ソラ','ハナ','ココ','クロ','チャチャ','ルナ','レオ','ムギ','シロ'];
+const state=Object.fromEntries(definitions.map(d=>[d.key,{index:null,origin:null,value:''}]));
+const container=document.getElementById('fields');
+const STORAGE_KEY='kitakami-cat-records-v2';
+const OLD_STORAGE_KEY='kitakami-cat-records-v1';
+function newId(){return 'cat-'+new Date().toISOString().replace(/[-:.TZ]/g,'')+'-'+Math.random().toString(36).slice(2,8)}
+function blank(){return Object.fromEntries(definitions.map(d=>[d.key,{index:null,origin:null,value:''}]))}
+function labelValue(key,obj){
+ if(key==='name') return obj.index==='custom'?obj.value:obj.value;
+ if(typeof obj.index==='number') return definitions.find(d=>d.key===key).options[obj.index][0];
+ return obj.value||'';
+}
+function snapshot(){return Object.fromEntries(definitions.map(d=>{const v=state[d.key];return[d.key,{value:labelValue(d.key,v),origin:v.origin||'none'}]}))}
+function emptyCat(){return {id:newId(),startedAt:new Date().toISOString(),events:[],state:blank(),prompt:'',saved:false}}
+function loadSaved(){
+ try{
+  let data=JSON.parse(localStorage.getItem(STORAGE_KEY));
+  if(data&&Array.isArray(data.finished)&&data.current?.id&&Array.isArray(data.current.events))return data;
+  data=JSON.parse(localStorage.getItem(OLD_STORAGE_KEY));
+  if(data&&Array.isArray(data.finished)&&data.current?.id&&Array.isArray(data.current.events)){data.current.saved=false;return data;}
+ }catch(e){}
+ return {finished:[],current:emptyCat()};
+}
+let records=loadSaved();
+if(records.current?.saved){
+ if(!records.finished.some(cat=>cat.id===records.current.id))records.finished.push(records.current);
+}else if(records.current && (records.current.events?.length || Object.values(records.current.state||{}).some(v=>v.origin || v.value) || records.current.prompt)){
+ records.drafts=Array.isArray(records.drafts)?records.drafts:[];
+ if(!records.drafts.some(cat=>cat.id===records.current.id))records.drafts.push(records.current);
+}
+records.current=emptyCat();
+try{localStorage.setItem(STORAGE_KEY,JSON.stringify(records))}catch(e){}
+function persist(){records.current.state=structuredClone(state);records.current.prompt=document.getElementById('prompt').value;try{localStorage.setItem(STORAGE_KEY,JSON.stringify(records));return true}catch(e){document.getElementById('saveMsg').textContent='端末内への保存に失敗しました。ブラウザの保存領域を確認してください。';return false}}
+function markDirty(){if(records.current.saved){records.current.saved=false;records.current.completedAt=null;}refreshMeta()}
+function changedFields(before,after){return definitions.filter(d=>JSON.stringify(before[d.key])!==JSON.stringify(after[d.key])).map(d=>({key:d.key,label:d.label,before:before[d.key],after:after[d.key]}))}
+function logAction(action,key,before){const after=snapshot();records.current.events.push({at:new Date().toISOString(),action,key:key||'',changes:changedFields(before,after)});markDirty();persist()}
+function refreshMeta(){document.getElementById('catId').textContent=records.current.id;document.getElementById('savedCount').textContent=records.finished.length+(records.current.saved?1:0);document.getElementById('newCat').disabled=!records.current.saved}
+function csvCell(v){const str=String(v??'');return '"'+str.replace(/"/g,'""')+'"'}
+function downloadCsv(filename,columns,rows){const contents='\ufeff'+[columns,...rows].map(r=>r.map(csvCell).join(',')).join('\r\n');const blob=new Blob([contents],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+function savedCats(){return records.finished.concat(records.current.saved?[records.current]:[])}
+function getFinalState(cat){const out=blank();for(const d of definitions){const item=cat.state?.[d.key]||{index:null,origin:null,value:''};out[d.key]={index:item.index??null,origin:item.origin??null,value:item.value??''};}return out}
+function exportFinal(){const columns=['cat_id','started_at','completed_at',...definitions.map(d=>d.label),...definitions.map(d=>d.label+'_状態'),'final_prompt'];const rows=savedCats().map(cat=>{const st=getFinalState(cat);return [cat.id,cat.startedAt,cat.completedAt,...definitions.map(d=>labelValue(d.key,st[d.key])||''),...definitions.map(d=>st[d.key]?.origin==='manual'?'確定':st[d.key]?.origin==='random'?'おまかせ':'未選択'),cat.prompt||'']});downloadCsv('cat_modeling_final_'+new Date().toISOString().slice(0,10)+'.csv',columns,rows)}
+function exportHistory(){const columns=['cat_id','event_time','action','item','before','after','before_status','after_status'];const rows=[];for(const cat of savedCats())for(const e of cat.events){const changes=Array.isArray(e.changes)?e.changes:[];const before=changes.map(c=>`${c.label}: ${c.before.value||'未選択'}`).join(' / ');const after=changes.map(c=>`${c.label}: ${c.after.value||'未選択'}`).join(' / ');const beforeStatus=changes.map(c=>`${c.label}: ${c.before.origin||'none'}`).join(' / ');const afterStatus=changes.map(c=>`${c.label}: ${c.after.origin||'none'}`).join(' / ');const promptBefore=e.promptBefore??null;const promptAfter=e.promptAfter??null;if(e.action==='プロンプト編集'&&(promptBefore!==null||promptAfter!==null)){rows.push([cat.id,e.at,e.action,'英語プロンプト',promptBefore??'',promptAfter??'','',''])}else{rows.push([cat.id,e.at,e.action,e.key?definitions.find(d=>d.key===e.key)?.label||e.key:'',before,after,beforeStatus,afterStatus])}}downloadCsv('cat_modeling_actions_'+new Date().toISOString().slice(0,10)+'.csv',columns,rows)}
+function hasValue(key){return key==='name'?Boolean(state[key].value.trim()):typeof state[key].index==='number'}
+function getLabel(key){const s=state[key];if(key==='name')return s.value||'';if(typeof s.index==='number'){const d=definitions.find(x=>x.key===key);return d.options[s.index][0]}return ''}
+function updateWarning(){const warning=document.getElementById('comboWarning');const expr=getLabel('expression');const pose=getLabel('pose');if(expr==='威嚇している'&&(pose==='寝そべる'||pose==='丸くなる')){warning.textContent='「威嚇している」と「'+pose+'」の組み合わせは、思った通りに生成されないことがあります。';warning.hidden=false;}else{warning.hidden=true;warning.textContent='';}}
+function draw(){container.replaceChildren();definitions.forEach(d=>{const s=state[d.key],card=document.createElement('div');card.className='field'+(s.origin?' '+s.origin:'');const head=document.createElement('div');head.className='top';const label=document.createElement('label');label.className='field-title';label.textContent=d.label;label.htmlFor='select-'+d.key;const badge=document.createElement('span');badge.className='state';badge.textContent=s.origin==='random'?'残りをおまかせ対象':s.origin==='manual'?'確定':'未選択';head.append(label,badge);const controls=document.createElement('div');controls.className='row controls';
+ if(d.key==='name'){
+  const select=document.createElement('select');select.id='select-name';select.setAttribute('aria-label','猫の名前を候補から選択');select.add(new Option('名前を選択してください',''));names.forEach(n=>select.add(new Option(n,n)));select.value=s.index==='custom'?'':(names.includes(s.value)?s.value:'');select.addEventListener('change',()=>{const before=snapshot();state.name={index:null,value:select.value,origin:select.value?'manual':null};logAction('候補から選択','name',before);draw()});controls.append(select);
+ } else {
+  const select=document.createElement('select');select.id='select-'+d.key;select.style.flex='1';select.style.width='auto';select.add(new Option('選択してください',''));d.options.forEach(([ja],i)=>select.add(new Option(ja,String(i))));select.value=typeof s.index==='number'?String(s.index):'';select.addEventListener('change',()=>{const before=snapshot();const v=select.value;state[d.key]={index:v===''?null:Number(v),origin:v===''?null:'manual',value:''};logAction('選択',d.key,before);draw()});controls.append(select);
+ }
+ const btn=document.createElement('button');btn.className='randomBtn';btn.textContent='おまかせ';btn.type='button';btn.addEventListener('click',()=>{const before=snapshot();randomize(d.key);logAction('項目別おまかせ',d.key,before);draw()});controls.append(btn);
+ const confirm=document.createElement('button');confirm.type='button';confirm.className='secondary';confirm.textContent='確定する';confirm.addEventListener('click',()=>{if(hasValue(d.key)){const before=snapshot();state[d.key].origin='manual';logAction('確定',d.key,before);draw()}});confirm.hidden=state[d.key].origin!=='random';controls.append(confirm);
+ card.append(head,controls);
+ if(d.key==='name'){
+  const input=document.createElement('input');input.type='text';input.id='free-name';input.placeholder='自由入力';input.setAttribute('aria-label','猫の名前を自由入力');input.value=s.index==='custom'?s.value:'';input.style.marginTop='8px';let startState=null;input.addEventListener('focus',()=>{startState=snapshot()});input.addEventListener('change',()=>{logAction('自由入力','name',startState||snapshot())});input.addEventListener('input',()=>{state.name={index:input.value.trim()?'custom':null,value:input.value,origin:input.value.trim()?'manual':null};document.getElementById('select-name').value='';card.className='field'+(state.name.origin?' '+state.name.origin:'');badge.textContent=state.name.origin?'確定':'未選択';confirm.hidden=state.name.origin!=='random';markDirty();persist();});card.append(input);
+ }
+ container.append(card);
+ });updateWarning()}
+function randomize(key){if(key==='name'){const previous=state.name.value;let candidates=names.filter(n=>n!==previous);if(!candidates.length)candidates=names;state.name={index:null,value:candidates[Math.floor(Math.random()*candidates.length)],origin:'random'};return;}const d=definitions.find(d=>d.key===key);const previous=state[key].index;let index=Math.floor(Math.random()*d.options.length);if(d.options.length>1&&index===previous)index=(index+1+Math.floor(Math.random()*(d.options.length-1)))%d.options.length;state[key]={index,origin:'random',value:''}}
+document.getElementById('remainingRandom').addEventListener('click',()=>{const before=snapshot();definitions.forEach(d=>{if(state[d.key].origin!=='manual')randomize(d.key)});logAction('残りをおまかせ','',before);draw()});
+document.getElementById('allRandom').addEventListener('click',()=>{const before=snapshot();definitions.forEach(d=>randomize(d.key));logAction('全部おまかせ','',before);draw()});
+document.getElementById('clear').addEventListener('click',()=>{const before=snapshot();definitions.forEach(d=>state[d.key]={index:null,origin:null,value:''});document.getElementById('prompt').value='';logAction('すべて未選択に戻す','',before);draw()});
+document.getElementById('generate').addEventListener('click',()=>{const features=definitions.filter(d=>d.key!=='name'&&typeof state[d.key].index==='number').map(d=>d.options[state[d.key].index][1]);document.getElementById('prompt').value='Create a single full-body 3D model of a domestic cat'+(features.length?' with '+features.join(', '):'')+(getLabel('tail')==='しっぽなし'?'. Show the entire cat, including all four paws, with no tail.':'. Show the entire cat, including all four paws and the tail.')+' The model should have natural feline anatomy, with no extra limbs, no background objects, and no text.';document.getElementById('copyMsg').textContent='';logAction('プロンプト生成','',snapshot())});
+document.getElementById('copy').addEventListener('click',async()=>{const content=document.getElementById('prompt').value;if(!content){document.getElementById('copyMsg').textContent='先にプロンプトを生成してください。';return}try{await navigator.clipboard.writeText(content);document.getElementById('copyMsg').textContent='コピーしました。'}catch{const box=document.getElementById('prompt');box.focus();box.select();document.getElementById('copyMsg').textContent='コピーできない場合は、選択された文章を手動でコピーしてください。'}});
+document.getElementById('prompt').value=records.current.prompt||'';
+let oldPrompt=document.getElementById('prompt').value;
+document.getElementById('prompt').addEventListener('focus',()=>{oldPrompt=document.getElementById('prompt').value});
+document.getElementById('prompt').addEventListener('input',()=>{markDirty();persist()});
+document.getElementById('prompt').addEventListener('change',()=>{const next=document.getElementById('prompt').value;if(oldPrompt!==next){records.current.events.push({at:new Date().toISOString(),action:'プロンプト編集',key:'',changes:[],promptBefore:oldPrompt,promptAfter:next});markDirty();persist();}oldPrompt=next;});
+document.getElementById('saveCat').addEventListener('click',()=>{if(records.current.saved){document.getElementById('saveMsg').textContent='この猫は保存済みです。';return;}if(!document.getElementById('prompt').value.trim()){document.getElementById('saveMsg').textContent='プロンプトがありません。完成データを保存するには、先にプロンプトを生成してください。';return;}const now=new Date().toISOString();records.current.completedAt=now;records.current.saved=true;records.current.events.push({at:now,action:'保存',key:'',changes:[]});if(!persist()){records.current.saved=false;records.current.completedAt=null;refreshMeta();return;}document.getElementById('saveMsg').textContent='この猫を端末内に保存しました。次の猫へ進めます。';refreshMeta();});
+document.getElementById('newCat').addEventListener('click',()=>{if(!records.current.saved){document.getElementById('saveMsg').textContent='先に「現在の猫を保存」を押してください。';return}if(!confirm('保存済みの猫を終了して、新しい猫を作りますか？'))return;records.finished.push(records.current);records.current=emptyCat();for(const d of definitions)state[d.key]={index:null,origin:null,value:''};document.getElementById('prompt').value='';document.getElementById('copyMsg').textContent='';if(!persist()){records.current=records.finished.pop();for(const d of definitions)state[d.key]={...records.current.state[d.key]};document.getElementById('prompt').value=records.current.prompt;refreshMeta();draw();return;}document.getElementById('saveMsg').textContent='新しい猫に切り替えました。';refreshMeta();draw();window.scrollTo(0,0)});
+document.getElementById('exportFinal').addEventListener('click',exportFinal);
+document.getElementById('exportHistory').addEventListener('click',exportHistory);
+refreshMeta();draw();
+</script></body></html>
